@@ -45,31 +45,6 @@ if (!exists("vst_mat")) {
   vst_mat <- assay(vst_obj) # genes x samples
 }
 
-# if (!exists("ens2sym_map")) {
-#   # Use rownames of 'res' as the ENSEMBL keys (they often include versions like ENSG00000.1)
-#   ensembl_ids_withver <- rownames(as.data.frame(res))
-#   ensembl_simple <- sub("\\..*$", "", ensembl_ids_withver)  # drop version suffix
-#   
-#   # mapIds returns a named character vector (names are the keys)
-#   ens2sym_map <- mapIds(org.Hs.eg.db,
-#                         keys = ensembl_simple,
-#                         column = "SYMBOL",
-#                         keytype = "ENSEMBL",
-#                         multiVals = "first")
-#   # ens2sym_map is a named vector; names are ensembl_simple
-# }
-# 
-# # 4) Build geneTable (tidyverse pipeline)
-# geneTable <- as.data.frame(res) %>%
-#   tibble::rownames_to_column(var = "ensembl") %>%        # original rowname (ENSEMBL with version)
-#   dplyr::mutate(ensembl_simple = sub("\\..*$", "", ensembl)) %>%  # remove version
-#   dplyr::mutate(SYMBOL = ens2sym_map[ensembl_simple]) %>%        # map to SYMBOL (may produce NA)
-#   dplyr::arrange(padj)
-# 
-# # 5) Optional: replace NA SYMBOLs with the ensembl_simple id (if you prefer)
-# geneTable <- geneTable %>%
-#   dplyr::mutate(SYMBOL = ifelse(is.na(SYMBOL) | SYMBOL == "", ensembl_simple, SYMBOL))
-
 # Ensure rownames are Ensembl IDs (or SYMBOL). If Ensembl have versions (ENSG... .1) strip versions for mapping.
 ensembl_ids <- rownames(res)
 ensembl_ids_simple <- sub("\\..*$", "", ensembl_ids)
