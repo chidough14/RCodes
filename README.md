@@ -8,8 +8,8 @@ The analysis compares Over-Representation Analysis (ORA), Gene Set Enrichment An
 1. Clone the repository
 
 ```bash
-git clone https://github.com/yourusername/colorectal-cancer-enrichment.git
-cd colorectal-cancer-enrichment
+git clone https://github.com/chidough14/RCodes.git
+cd RCodes
 ```
 
 2. Install dependencies
@@ -39,7 +39,7 @@ Run each script in order from the scripts folder:
 6. comparison_of_methods.R	Compare ORA, GSEA, and Gscore (Venn, Jaccard, Spearman)
 7. visualization.R	Generate and export all figures and summary tables
 
-4. View results
+## View results
 
 Results (tables, figures) are automatically saved inside the tables/figures directory.
 You can view plots directly in RStudio or open the saved .png files.
