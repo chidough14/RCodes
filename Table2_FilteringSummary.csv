@@ -1,0 +1,4 @@
+"Filtering_Step","Description","Number_of_Genes","Percentage_of_Total"
+"Initial dataset","All annotated genes obtained from HTSeq-Counts",60660,100
+"Excluded genes","Genes with fewer than 10 counts in fewer than 5 samples",24987,41.2
+"Retained genes","Genes passing expression threshold for analysis",35673,58.8
