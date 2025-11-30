@@ -1,6 +1,3 @@
-# ----------------------------
-# GSEA using fgsea (Hallmark gene sets)
-# ----------------------------
 
 # Install / load packages if needed
 if (!requireNamespace("BiocManager", quietly = TRUE)) install.packages("BiocManager")
@@ -27,14 +24,11 @@ halls <- msigdbr(species = "Homo sapiens", category = "H") %>%
 ranks_df <- geneTable %>%
   filter(!is.na(SYMBOL)) %>%
   dplyr::arrange(desc(log2FoldChange)) %>%
-  distinct(SYMBOL, .keep_all = TRUE)   # ensure unique SYMBOL rows
+  distinct(SYMBOL, .keep_all = TRUE)  
 
 ranks <- ranks_df$log2FoldChange
 names(ranks) <- ranks_df$SYMBOL
 
-# Option: if many ties or you prefer a signed-statistic combine magnitude & significance:
-# ranks_signed <- sign(ranks_df$log2FoldChange) * -log10(ranks_df$padj + 1e-300)
-# names(ranks_signed) <- ranks_df$SYMBOL
 
 # --- Run fgsea
 set.seed(42)
@@ -42,7 +36,7 @@ fgsea_res <- fgsea::fgsea(pathways = halls,
                           stats = ranks,
                           minSize = 15,
                           maxSize = 500,
-                          nperm = 10000)  # increase nperm for more stable p-values
+                          nperm = 10000)
 
 # Tidy results
 fgsea_df <- as.data.frame(fgsea_res) %>%
@@ -51,18 +45,10 @@ fgsea_df <- as.data.frame(fgsea_res) %>%
 # Convert fgsea results to a data frame and simplify list columns
 fgsea_df <- as.data.frame(fgsea_res)
 
-# Collapse list columns (like leadingEdge) into comma-separated strings
+# Collapse list columns into comma-separated strings
 fgsea_df$leadingEdge <- sapply(fgsea_df$leadingEdge, paste, collapse = ",")
 
 write.csv(fgsea_df, "GSEA_fgsea_hallmark_results.csv", row.names = FALSE)
-# 
-# # --- View top results in RStudio Viewer (interactive)
-# topN <- 15
-# fgsea_top <- fgsea_df %>% dplyr::slice_head(n = topN)
-# 
-# DT::datatable(fgsea_top,
-#               caption = "Top GSEA Hallmark pathways (fgsea). Columns: pathway, NES, pval, padj, leadingEdge",
-#               options = list(pageLength = topN, scrollX = TRUE))
 
 #Truncated table
 fgsea_table_short <- fgsea_df %>%
@@ -83,7 +69,7 @@ if (nrow(fgsea_df) > 0) {
       ggtitle(paste0("GSEA (fgsea) enrichment: ", pos_top)) +
       theme_minimal(base_size = 13)
     print(p1)
-    ggsave(filename = "GSEA_enrichment_top_pos.png", plot = p1, width = 7, height = 5, dpi = 300)
+    ggsave(filename = "Figure11_GSEA_enrichment_top_pos.png", plot = p1, width = 7, height = 5, dpi = 300)
   }
   
   # top negatively enriched pathway
@@ -107,7 +93,7 @@ pbar <- ggplot(topbar, aes(x = reorder(pathway, NES), y = NES, fill = NES > 0)) 
        title = "Top Hallmark pathways (GSEA - fgsea)") +
   scale_fill_manual(values = c("TRUE" = "#D55E00", "FALSE" = "#0072B2"), guide = FALSE)
 print(pbar)
-ggsave(filename = "GSEA_topN_NES_barplot.png", plot = pbar, width = 8, height = 6, dpi = 300)
+ggsave(filename = "Figure12_GSEA_topN_NES_barplot.png", plot = pbar, width = 8, height = 6, dpi = 300)
 
-# --- Optional: Save R object
+
 # saveRDS(fgsea_df, file = "GSEA_fgsea_results.rds")

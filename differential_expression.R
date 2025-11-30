@@ -1,4 +1,16 @@
 library(DESeq2)
+library(dplyr)
+library(tibble)
+library(clusterProfiler)
+library(org.Hs.eg.db)
+library(AnnotationDbi)
+library(fgsea)
+library(msigdbr)
+library(ggplot2)
+library(data.table)
+library(pheatmap)
+library(magrittr) 
+library(RColorBrewer)
 
 if (!exists("dds")) {
   if (file.exists("TCGA_COAD_data_acquisition_Processed.RData")) {
@@ -33,6 +45,27 @@ res <- results(dds, name = "shortLetterCode_TP_vs_NT")
 # Shrink log2 fold changes
 res <- lfcShrink(dds, coef = "shortLetterCode_TP_vs_NT", type = "apeglm")
 
+# Ensure rownames are Ensembl IDs (or SYMBOL). If Ensembl have versions (ENSG... .1) strip versions for mapping.
+ensembl_ids <- rownames(res)
+ensembl_ids_simple <- sub("\\..*$", "", ensembl_ids)
+
+# Map Ensembl -> SYMBOL
+map <- mapIds(org.Hs.eg.db,
+              keys = ensembl_ids_simple,
+              column = "SYMBOL",
+              keytype = "ENSEMBL",
+              multiVals = "first")
+
+# Build gene table
+geneTable <- as.data.frame(res) %>%
+  rownames_to_column(var = "ensembl") %>%
+  mutate(ensembl_simple = sub("\\..*$", "", ensembl),
+         SYMBOL = map[ensembl_simple]) %>%
+  arrange(padj)
+
+# Remove genes without symbol if you want
+geneTable <- geneTable %>% filter(!is.na(SYMBOL))
+
 # Summary of results
 summary(res)
 
@@ -44,9 +77,21 @@ plotMA(res, ylim = c(-5, 5), main = "MA Plot: Tumor vs Normal")
 
 library(EnhancedVolcano)
 
+# Attach gene symbols from geneTable to DESeq2 results
+res$ensembl <- rownames(res)
+
+# Merge res with geneTable to add SYMBOL column
+res_merged <- merge(as.data.frame(res), 
+                    geneTable[, c("ensembl", "SYMBOL")],
+                    by = "ensembl",
+                    all.x = TRUE)
+
+# Replace rownames for convenience
+rownames(res_merged) <- res_merged$ensembl
+
 #Volcano plot
 EnhancedVolcano(res,
-                lab = rownames(res),
+                lab = res_merged$SYMBOL,
                 x = "log2FoldChange",
                 y = "padj",
                 xlim = c(-6, 6),
@@ -63,22 +108,47 @@ library(RColorBrewer)
 
 #Heatmap
 top_genes <- head(order(res$padj), 50)
-mat <- assay(vst(dds))[top_genes, ]
-mat <- t(scale(t(mat)))
 
+# ---- Extract VST expression matrix ----
+vst_mat <- assay(vst(dds))[top_genes, ]
+
+# ----Map rownames (ENSEMBL) to gene symbols ----
+ensembl_ids <- rownames(vst_mat)
+ensembl_simple <- sub("\\..*$", "", ensembl_ids)
+
+gene_symbols <- mapIds(
+  org.Hs.eg.db,
+  keys = ensembl_simple,
+  column = "SYMBOL",
+  keytype = "ENSEMBL",
+  multiVals = "first"
+)
+
+# Replace NA symbols with ENSEMBL IDs (to avoid empty labels)
+gene_symbols[is.na(gene_symbols)] <- ensembl_simple[is.na(gene_symbols)]
+
+# Assign mapped symbols as rownames
+rownames(vst_mat) <- gene_symbols
+
+# ---- Z-score transform rows ----
+mat <- t(scale(t(vst_mat)))
+
+# --- Annotation for columns ----
 annotation_col <- data.frame(SampleType = colData(dds)$sample_type)
 rownames(annotation_col) <- colnames(mat)
 
-pheatmap(mat,
-         annotation_col = annotation_col,
-         color = colorRampPalette(rev(brewer.pal(9, "RdBu")))(255),
-         cluster_cols = TRUE,
-         cluster_rows = TRUE,
-         show_rownames = TRUE,
-         show_colnames = FALSE,
-         fontsize = 10,
-         main = "Top 50 Differentially Expressed Genes"
+# ---- Plot heatmap ----
+pheatmap(
+  mat,
+  annotation_col = annotation_col,
+  color = colorRampPalette(rev(brewer.pal(9, "RdBu")))(255),
+  cluster_cols = TRUE,
+  cluster_rows = TRUE,
+  show_rownames = TRUE,
+  show_colnames = FALSE,
+  fontsize = 10,
+  main = "Top 50 Differentially Expressed Genes (Gene Symbols)"
 )
 
-save(dds, vsd, data_filtered, res, sig_res, file = "TCGA_COAD_data_acquisition_Processed.RData")
+save(dds, vsd, data_filtered, res, sig_res, res_merged, geneTable, file = "TCGA_COAD_data_acquisition_Processed.RData")
 

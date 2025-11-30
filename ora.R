@@ -1,6 +1,4 @@
 
-
-# Load libraries (order matters)
 library(clusterProfiler)
 library(org.Hs.eg.db)
 library(ggplot2)
@@ -30,11 +28,11 @@ ego <- enrichGO(
 )
 
 # ===== 3. Visualize results =====
-# Use enrichplot’s dotplot() – this works in all versions
+
 dotplot(ego, showCategory = 15, title = "GO Biological Processes (ORA)") +
   theme_minimal(base_size = 13)
 
-# If you still want a bar-style view:
+
 barplot(ego, showCategory = 15, title = "Top GO Biological Processes (ORA)") +
   theme_minimal(base_size = 13)
 

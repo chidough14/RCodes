@@ -29,15 +29,14 @@ install.packages(c("ggplot2", "dplyr", "data.table", "knitr"))
 
 3. Run the analysis
 
-Run each script in order from the scripts folder:
+Run each script in order:
 
 1. **data_acquisition.R:**	Download and preprocess TCGA-COAD RNA-seq data
-2. **differential_expression.R:**	Perform DESeq2 differential expression analysis
-3. **enrichment_analysis.R:**	Generates a ranked gene table that is used by the ORA, GSEA, and Gscore
-4. **ora.R:**	Conduct ORA using GO and KEGG pathways
-5. **gsea.R:**	Run GSEA on Hallmark gene sets using fgsea
-6. **gscore_fgsea.R:**	Perform correlation-based enrichment (Gscore)
-7. **comparison_of_methods.R:**	Compare ORA, GSEA, and Gscore (Venn, Jaccard, Spearman)
+2. **differential_expression.R:**	Perform DESeq2 differential expression analysis, generates a ranked gene table
+3. **ora.R:**	Conduct ORA using GO and KEGG pathways
+4. **gsea.R:**	Run GSEA on Hallmark gene sets using fgsea
+5. **gscore_fgsea.R:**	Perform correlation-based enrichment (Gscore)
+6. **comparison.R:**	Compare ORA, GSEA, and Gscore (Jaccard, Spearman)
 
 ## View results
 

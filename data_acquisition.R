@@ -1,5 +1,5 @@
 
-# ===================== 1. Load Required Packages =====================
+#  Load Required Packages 
 if (!requireNamespace("BiocManager", quietly = TRUE))
   install.packages("BiocManager")
 
@@ -18,7 +18,7 @@ library(pheatmap)
 library(RColorBrewer)
 library(matrixStats)
 
-# ===================== 2. Data Download =====================
+# Data Download
 # Define query for TCGA-COAD (HTSeq-count workflow)
 query <- GDCquery(
   project = "TCGA-COAD",
@@ -27,14 +27,13 @@ query <- GDCquery(
   workflow.type = "STAR - Counts"
 )
 
-# Download (may take a while — large dataset!)
 GDCdownload(query, method = "api", files.per.chunk = 20)
 
 # Prepare data
 data_coad <- GDCprepare(query)
 save(data_coad, file = "TCGA_COAD_data.RData")
 
-# ===================== 3. Dataset Overview =====================
+#  Dataset Overview 
 # Check sample types
 sample_types <- data_coad$shortLetterCode
 table(sample_types)
@@ -58,7 +57,7 @@ dataset_summary <- data.frame(
 write.csv(dataset_summary, "Table1_Dataset_Summary.csv", row.names = FALSE)
 print(dataset_summary)
 
-# ===================== 4. Data Filtering =====================
+#Data Filtering 
 
 # ---- Filter low-count genes ----
 # Keep genes with at least 10 counts in at least 5 samples
@@ -75,7 +74,7 @@ percent_initial  <- round((initial_genes / initial_genes) * 100, 1)
 percent_excluded <- round((excluded_genes / initial_genes) * 100, 1)
 percent_retained <- round((retained_genes / initial_genes) * 100, 1)
 
-# ---- Construct Table 2 ----
+# ---- Construct Table ----
 table2 <- data.frame(
   Filtering_Step      = c("Initial dataset", "Excluded genes", "Retained genes"),
   Description         = c(
@@ -97,7 +96,7 @@ cat("Genes before filtering:", initial_genes, "\n")
 cat("Genes excluded:", excluded_genes, "\n")
 cat("Genes retained:", retained_genes, "\n")
 
-# ===================== 5. Normalization =====================
+# ===================== Normalization =====================
 dds <- DESeqDataSet(data_filtered, design = ~shortLetterCode)
 dds <- DESeq(dds)
 
@@ -138,7 +137,7 @@ ggplot(combined_df, aes(x = value, fill = Type, color = Type)) +
     y = "Density"
   )
 
-# ===================== 6. Quality Control =====================
+# ===================== Quality Control =====================
 
 ## PCA Plot
 plotPCA(vsd, intgroup = "shortLetterCode") +
@@ -158,11 +157,6 @@ sample_dist_matrix <- as.matrix(sample_dists)
 annotation_col <- data.frame(SampleType = vsd$shortLetterCode)
 rownames(annotation_col) <- colnames(vsd)
 
-# pheatmap(
-#   sample_dist_matrix,
-#   annotation_col = annotation_col,
-#   main = "Sample-to-Sample Distance Heatmap"
-# )
 pheatmap(
   sample_dist_matrix,
   annotation_col = annotation_col,
@@ -174,17 +168,12 @@ pheatmap(
   color = colorRampPalette(rev(brewer.pal(9, "RdBu")))(255)
 )
 
-# ===================== 7. Gene Expression Patterns =====================
+# ===================== Gene Expression Patterns =====================
 # Top 50 most variable genes
 topVarGenes <- head(order(rowVars(assay(vsd)), decreasing = TRUE), 50)
 mat <- assay(vsd)[topVarGenes, ] 
 mat <- mat - rowMeans(mat) 
-# pheatmap( mat, 
-#           annotation_col = annotation_col, 
-#           color = colorRampPalette(rev(brewer.pal(9, "RdBu")))(255), 
-#           show_rownames = TRUE, 
-#           main = "Heatmap of Top 50 Variable Genes in TCGA-COAD" 
-# )
+
 pheatmap(
   mat,
   annotation_col = annotation_col,
@@ -197,6 +186,6 @@ pheatmap(
   fontsize = 10
 )
 
-# ===================== 8. Save Workspace =====================
+# ===================== Save Workspace =====================
 save(dds, vsd, data_filtered, file = "TCGA_COAD_data_acquisition_Processed.RData")
 
