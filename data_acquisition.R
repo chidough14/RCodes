@@ -8,6 +8,9 @@ BiocManager::install(c(
   "biomaRt", "org.Hs.eg.db", "pheatmap", "RColorBrewer",
   "matrixStats"
 ))
+install.packages("dendextend")
+install.packages("ggdendro")
+
 
 library(TCGAbiolinks)
 library(SummarizedExperiment)
@@ -32,6 +35,32 @@ GDCdownload(query, method = "api", files.per.chunk = 20)
 # Prepare data
 data_coad <- GDCprepare(query)
 save(data_coad, file = "TCGA_COAD_data.RData")
+
+#Appendix Table B1. Summary of TCGA-COAD sample metadata used in the analysis
+sample_metadata <- as.data.frame(colData(dds))
+# Fix any list columns
+sample_metadata <- data.frame(lapply(sample_metadata, function(x) {
+  if (is.list(x)) sapply(x, paste, collapse = ",") else x
+}), stringsAsFactors = FALSE)
+write.csv(sample_metadata, "Appendix_Table_B1_Sample_Metadata.csv", row.names = TRUE)
+
+#table preview
+selected_metadata <- sample_metadata %>%
+  dplyr::select(
+    sample = barcode,
+    sample_type = shortLetterCode,
+    patient = patient,
+    project_id,
+    definition,
+    shortLetterCode
+  )
+preview_metadata <- head(selected_metadata, 10)
+write.csv(preview_metadata,
+          "Appendix_Table_B1_Metadata_Preview.csv",
+          row.names = FALSE)
+
+
+
 
 #  Dataset Overview 
 # Check sample types
@@ -74,6 +103,21 @@ percent_initial  <- round((initial_genes / initial_genes) * 100, 1)
 percent_excluded <- round((excluded_genes / initial_genes) * 100, 1)
 percent_retained <- round((retained_genes / initial_genes) * 100, 1)
 
+#Appendix Table B2. Gene-by-gene filtering outcome indicating whether each gene passed minimum expression thresholds.
+filtered_genes <- data.frame(
+  Gene = rownames(data_coad),
+  Passed_Filter = keep
+)
+
+write.csv(filtered_genes, "Appendix_Table_B2_Filtered_Genes.csv", row.names = FALSE)
+#Table preview
+preview_B2 <- head(filtered_genes, 10)
+write.csv(
+  preview_B2,
+  "Appendix_Table_B2_Preview.csv",
+  row.names = FALSE
+)
+
 # ---- Construct Table ----
 table2 <- data.frame(
   Filtering_Step      = c("Initial dataset", "Excluded genes", "Retained genes"),
@@ -102,6 +146,15 @@ dds <- DESeq(dds)
 
 # Variance-stabilizing transformation
 vsd <- vst(dds, blind = FALSE)
+
+# Appendix Figure A3 — Mean-Variance Trend
+mean_vals <- rowMeans(assay(vsd))
+var_vals  <- rowVars(assay(vsd))
+plot(mean_vals, var_vals,
+     pch = 16, cex = 0.5,
+     xlab = "Mean Expression", ylab = "Variance",
+     main = "Mean–Variance Trend After VST")
+
 
 library(reshape2)
 
@@ -137,6 +190,15 @@ ggplot(combined_df, aes(x = value, fill = Type, color = Type)) +
     y = "Density"
   )
 
+# Appendix Figure A4 — Per-sample distribution (boxplot)
+log_counts <- log10(raw_counts + 1)
+boxplot(log_counts,
+        las = 2, outline = FALSE,
+        main = "Per-Sample Log10 Count Distribution",
+        ylab = "Log10 Normalized Counts")
+
+
+
 # ===================== Quality Control =====================
 
 ## PCA Plot
@@ -156,6 +218,26 @@ sample_dists <- dist(t(assay(vsd)))
 sample_dist_matrix <- as.matrix(sample_dists)
 annotation_col <- data.frame(SampleType = vsd$shortLetterCode)
 rownames(annotation_col) <- colnames(vsd)
+
+
+
+library(ggdendro)
+library(ggplot2)
+
+hc <- hclust(sample_dists)
+dend_data <- dendro_data(hc)
+
+ggplot(segment(dend_data)) +
+  geom_segment(aes(x = x, y = y, xend = xend, yend = yend)) +
+  geom_text(data = label(dend_data), aes(x = x, y = y - 0.02*max(y), label = label),
+            angle = 90, hjust = 1, size = 3) +
+  theme_minimal() +
+  labs(title = "Hierarchical Clustering of Samples")
+
+
+
+
+
 
 pheatmap(
   sample_dist_matrix,

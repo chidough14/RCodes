@@ -34,9 +34,8 @@ Run each script in order:
 1. **data_acquisition.R:**	Download and preprocess TCGA-COAD RNA-seq data
 2. **differential_expression.R:**	Perform DESeq2 differential expression analysis, generates a ranked gene table
 3. **ora.R:**	Conduct ORA using GO and KEGG pathways
-4. **gsea.R:**	Run GSEA on Hallmark gene sets using fgsea
-5. **gscore_fgsea.R:**	Perform correlation-based enrichment (Gscore)
-6. **comparison.R:**	Compare ORA, GSEA, and Gscore (Jaccard, Spearman)
+4. **gsea.R:**	Run GSEA on KEGG
+5. **comparison.R:**	Compare ORA and GSEA (Jaccard, Spearman)
 
 ## View results
 
@@ -46,7 +45,7 @@ You can view plots directly in RStudio or open the saved .png files.
 ## Computational environment
 
 All analyses were performed using R (v4.4.1) and Bioconductor (v3.19)
-on Windows 11 Pro (64-bit) with 32 GB RAM and an Intel Core i7 processor.
+on Windows 11 Pro (64-bit) with 16 GB RAM and an Intel Core i7 processor.
 
 Key R Packages:
 TCGAbiolinks, DESeq2, org.Hs.eg.db, biomaRt,

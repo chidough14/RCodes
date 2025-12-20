@@ -1,99 +1,99 @@
 
-# Install / load packages if needed
-if (!requireNamespace("BiocManager", quietly = TRUE)) install.packages("BiocManager")
-required_cran <- c("data.table", "dplyr", "ggplot2", "DT")
-for (p in required_cran) if (!requireNamespace(p, quietly = TRUE)) install.packages(p)
-bioc_pkgs <- c("fgsea", "msigdbr")
-for (p in bioc_pkgs) if (!requireNamespace(p, quietly = TRUE)) BiocManager::install(p)
-
-library(fgsea)
 library(msigdbr)
+library(fgsea)
 library(dplyr)
-library(data.table)
 library(ggplot2)
-library(DT)
-load("TCGA_COAD_data_acquisition_Processed.RData") 
+library(enrichplot)
 
-# --- Prepare pathways: Hallmark (H) collection from MSigDB
-halls <- msigdbr(species = "Homo sapiens", category = "H") %>%
-  dplyr::select(gs_name, gene_symbol) %>%
-  split(x = .$gene_symbol, f = .$gs_name)
+# 1. Load your processed data
+# This file must contain the 'geneTable' created in your DE script
+load("TCGA_COAD_data_acquisition_Processed.RData")
 
-# --- Prepare ranked vector (names = SYMBOL)
-# use log2FoldChange as ranking metric (descending -> upregulated at top)
-ranks_df <- geneTable %>%
-  filter(!is.na(SYMBOL)) %>%
-  dplyr::arrange(desc(log2FoldChange)) %>%
-  distinct(SYMBOL, .keep_all = TRUE)  
+# 2. Prepare the Ranked Gene List
+# We use Log2 Fold Change for ranking. 
+# GSEA requires a named vector sorted in descending order.
+gene_list <- geneTable$log2FoldChange
+names(gene_list) <- geneTable$SYMBOL
+gene_list <- sort(gene_list, decreasing = TRUE)
 
-ranks <- ranks_df$log2FoldChange
-names(ranks) <- ranks_df$SYMBOL
+# Download the entire C2 (Curated Pathways) collection
+all_c2 <- msigdbr(species = "Homo sapiens", category = "C2")
+
+# Manually filter for KEGG pathways using 'gs_subcat' or 'gs_name'
+# This bypasses the subcategory error entirely
+kegg_msig <- all_c2 %>% 
+  filter(gs_subcat == "CP:KEGG" | grepl("KEGG", gs_name))
+
+# 3. Check if it worked
+print(paste("Number of KEGG pathways found:", length(unique(kegg_msig$gs_name))))
+
+# 4. Convert to list for GSEA
+kegg_pathways <- split(x = kegg_msig$gene_symbol, f = kegg_msig$gs_name)
 
 
-# --- Run fgsea
-set.seed(42)
-fgsea_res <- fgsea::fgsea(pathways = halls,
-                          stats = ranks,
-                          minSize = 15,
-                          maxSize = 500,
-                          nperm = 10000)
+gene_df <- data.frame(Symbol = names(gene_list), Log2FC = gene_list)
 
-# Tidy results
-fgsea_df <- as.data.frame(fgsea_res) %>%
-  arrange(padj)
 
-# Convert fgsea results to a data frame and simplify list columns
-fgsea_df <- as.data.frame(fgsea_res)
+gene_df_unique <- gene_df %>%
+  group_by(Symbol) %>%
+  summarize(Log2FC = mean(Log2FC)) %>%
+  filter(Symbol != "" & !is.na(Symbol)) # Remove any empty symbols
 
-# Collapse list columns into comma-separated strings
-fgsea_df$leadingEdge <- sapply(fgsea_df$leadingEdge, paste, collapse = ",")
 
-write.csv(fgsea_df, "GSEA_fgsea_hallmark_results.csv", row.names = FALSE)
+gene_list_final <- gene_df_unique$Log2FC
+names(gene_list_final) <- gene_df_unique$Symbol
 
-#Truncated table
-fgsea_table_short <- fgsea_df %>%
+
+gene_list_final <- sort(gene_list_final, decreasing = TRUE)
+
+
+gsea_results <- fgsea(
+  pathways = kegg_pathways, 
+  stats    = gene_list_final, 
+  minSize  = 15,
+  maxSize  = 500
+)
+
+gsea_results_for_csv <- gsea_results %>%
+  as.data.frame() %>%
+  dplyr::select(-leadingEdge) # Remove the column causing the error
+
+# 2. Save to CSV
+write.csv(gsea_results_for_csv, "GSEA_KEGG_Results_Final.csv", row.names = FALSE)
+
+gsea_table_short <- gsea_results_for_csv %>%
   arrange(padj) %>%
   select(pathway, NES, pval, padj) %>%
   head(10)
 
-write.csv(fgsea_table_short, "Table 3. GSEA_fgsea_table_short.csv", row.names = FALSE)
+knitr::kable(gsea_table_short, caption = "Table 3. Top 10 enriched KEGG pathways.")
 
-knitr::kable(fgsea_table_short, caption = "Table 3. Top 10 enriched Hallmark pathways (GSEA).")
+# ==============================================================================
+# VISUALIZATION FOR REPORT
+# ==============================================================================
 
+# FIGURE 11: Top 15 KEGG Pathways Bar Plot
+top_15_gsea <- head(gsea_results, 15)
 
-# --- Plot: enrichment plot for the top positively enriched pathway
-if (nrow(fgsea_df) > 0) {
-  pos_top <- fgsea_df %>% filter(NES > 0) %>% arrange(padj) %>% slice_head(n = 1) %>% pull(pathway)
-  if (!is.na(pos_top)) {
-    p1 <- fgsea::plotEnrichment(halls[[pos_top]], ranks) +
-      ggtitle(paste0("GSEA (fgsea) enrichment: ", pos_top)) +
-      theme_minimal(base_size = 13)
-    print(p1)
-    ggsave(filename = "Figure11_GSEA_enrichment_top_pos.png", plot = p1, width = 7, height = 5, dpi = 300)
-  }
-  
-  # top negatively enriched pathway
-  neg_top <- fgsea_df %>% filter(NES < 0) %>% arrange(padj) %>% slice_head(n = 1) %>% pull(pathway)
-  if (!is.na(neg_top)) {
-    p2 <- fgsea::plotEnrichment(halls[[neg_top]], ranks) +
-      ggtitle(paste0("GSEA (fgsea) enrichment: ", neg_top)) +
-      theme_minimal(base_size = 13)
-    print(p2)
-    ggsave(filename = "GSEA_enrichment_top_neg.png", plot = p2, width = 7, height = 5, dpi = 300)
-  }
-}
+ggplot(top_15_gsea, aes(x = reorder(pathway, NES), y = NES)) +
+  geom_bar(stat = "identity", aes(fill = padj < 0.05)) +
+  coord_flip() +
+  scale_fill_manual(values = c("grey", "#E69F00")) +
+  theme_minimal() +
+  labs(
+    title = "Figure 11. Top Enriched KEGG Pathways (GSEA)",
+    x = "Pathway",
+    y = "Normalized Enrichment Score (NES)"
+  )
 
-# --- Barplot of top pathways by NES (top 15 by padj)
-topN <- 15
-topbar <- fgsea_df %>% dplyr::slice_head(n = topN)
-pbar <- ggplot(topbar, aes(x = reorder(pathway, NES), y = NES, fill = NES > 0)) +
-  geom_col() + coord_flip() +
-  theme_minimal(base_size = 12) +
-  labs(x = "", y = "Normalized Enrichment Score (NES)",
-       title = "Top Hallmark pathways (GSEA - fgsea)") +
-  scale_fill_manual(values = c("TRUE" = "#D55E00", "FALSE" = "#0072B2"), guide = FALSE)
-print(pbar)
-ggsave(filename = "Figure12_GSEA_topN_NES_barplot.png", plot = pbar, width = 8, height = 6, dpi = 300)
+# FIGURE 10: Specific Enrichment Plot (e.g., for the top pathway)
+# Replace 'pathway_name' with the actual name of your #1 result
+top_pathway_name <- gsea_results$pathway[1]
 
 
-# saveRDS(fgsea_df, file = "GSEA_fgsea_results.rds")
+
+plotEnrichment(kegg_pathways[[top_pathway_name]], gene_list) +
+  labs(title = paste("Figure 10. GSEA Enrichment Plot:", top_pathway_name))
+
+# Save workspace for the final comparison step
+save(gsea_results, kegg_pathways, file = "GSEA_Final_Results.RData")
