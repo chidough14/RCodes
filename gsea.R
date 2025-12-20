@@ -5,13 +5,10 @@ library(dplyr)
 library(ggplot2)
 library(enrichplot)
 
-# 1. Load your processed data
-# This file must contain the 'geneTable' created in your DE script
+# Load your processed data
 load("TCGA_COAD_data_acquisition_Processed.RData")
 
-# 2. Prepare the Ranked Gene List
-# We use Log2 Fold Change for ranking. 
-# GSEA requires a named vector sorted in descending order.
+# Prepare the Ranked Gene List
 gene_list <- geneTable$log2FoldChange
 names(gene_list) <- geneTable$SYMBOL
 gene_list <- sort(gene_list, decreasing = TRUE)
@@ -19,15 +16,13 @@ gene_list <- sort(gene_list, decreasing = TRUE)
 # Download the entire C2 (Curated Pathways) collection
 all_c2 <- msigdbr(species = "Homo sapiens", category = "C2")
 
-# Manually filter for KEGG pathways using 'gs_subcat' or 'gs_name'
-# This bypasses the subcategory error entirely
 kegg_msig <- all_c2 %>% 
   filter(gs_subcat == "CP:KEGG" | grepl("KEGG", gs_name))
 
-# 3. Check if it worked
+# Check if it worked
 print(paste("Number of KEGG pathways found:", length(unique(kegg_msig$gs_name))))
 
-# 4. Convert to list for GSEA
+#  Convert to list for GSEA
 kegg_pathways <- split(x = kegg_msig$gene_symbol, f = kegg_msig$gs_name)
 
 
@@ -56,7 +51,7 @@ gsea_results <- fgsea(
 
 gsea_results_for_csv <- gsea_results %>%
   as.data.frame() %>%
-  dplyr::select(-leadingEdge) # Remove the column causing the error
+  dplyr::select(-leadingEdge) 
 
 # 2. Save to CSV
 write.csv(gsea_results_for_csv, "GSEA_KEGG_Results_Final.csv", row.names = FALSE)
@@ -72,7 +67,7 @@ knitr::kable(gsea_table_short, caption = "Table 3. Top 10 enriched KEGG pathways
 # VISUALIZATION FOR REPORT
 # ==============================================================================
 
-# FIGURE 11: Top 15 KEGG Pathways Bar Plot
+#Top 15 KEGG Pathways Bar Plot
 top_15_gsea <- head(gsea_results, 15)
 
 ggplot(top_15_gsea, aes(x = reorder(pathway, NES), y = NES)) +
@@ -86,8 +81,7 @@ ggplot(top_15_gsea, aes(x = reorder(pathway, NES), y = NES)) +
     y = "Normalized Enrichment Score (NES)"
   )
 
-# FIGURE 10: Specific Enrichment Plot (e.g., for the top pathway)
-# Replace 'pathway_name' with the actual name of your #1 result
+# Specific Enrichment Plot (e.g., for the top pathway)
 top_pathway_name <- gsea_results$pathway[1]
 
 
