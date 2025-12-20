@@ -74,40 +74,5 @@ kegg_table %>%
 write.csv(as.data.frame(ego), "ORA_GO_results.csv", row.names = FALSE)
 write.csv(as.data.frame(ekegg), "ORA_KEGG_results.csv", row.names = FALSE)
 
-# Appendix Figure A6 — GO Enrichment Map
-ego_sim <- pairwise_termsim(ego)
-png("Appendix_Figure_A6—GO_Enrichment_Map.png", 
-    width = 3000,    # width in pixels
-    height = 2000,   # height in pixels
-    res = 300)       # resolution in dpi for clarity
-# Plot the emap
-emapplot(ego_sim, showCategory = min(30, length(ego$Description)))  # ensure showCategory <= #terms
-dev.off()  # close the PNG device
-
-#Appendix Table B5. Complete GO Biological Process enrichment results from ORA.
-write.csv(as.data.frame(ego),
-          "Appendix_Table_B5_ORA_GO_All.csv",
-          row.names = FALSE)
-#TableB5 preview
-selected_metadata <- ego@result %>%
-  dplyr::select(ID, Description, pvalue, p.adjust, Count)
-
-preview_B5 <- head(selected_metadata, 10)
-write.csv(as.data.frame(preview_B5),
-          "Appendix_Table_B5_ORA_GO_Preview.csv",
-          row.names = FALSE)
-
-#Appendix Table B6. Complete KEGG pathway enrichment results from ORA.
-write.csv(as.data.frame(ekegg),
-          "Appendix_Table_B6_ORA_KEGG_All.csv",
-          row.names = FALSE)
-#TableB6 preview
-selected_metadata_ekegg <- ekegg@result %>%
-  dplyr::select(ID, Description, pvalue, p.adjust, Count)
-
-preview_B6 <- head(selected_metadata_ekegg, 10)
-write.csv(as.data.frame(preview_B6),
-          "Appendix_Table_B6_ORA_KEGG_Preview.csv",
-          row.names = FALSE)
 
 

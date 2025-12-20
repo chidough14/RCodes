@@ -69,17 +69,6 @@ geneTable <- geneTable %>% filter(!is.na(SYMBOL))
 # Summary of results
 summary(res)
 
-# Appendix_Figure_A2_CooksDistance
-png("Appendix_Figure_A2_CooksDistance.png", width = 1800, height = 1600, res = 220)
-# Faster Cook's distance plot by limiting to top 2000 most variable genes
-topVar <- head(order(rowVars(counts(dds)), decreasing = TRUE), 2000)
-plot(log10(assays(dds)[["cooks"]][topVar, ] + 1),
-     main = "Cook's Distance (Top 2,000 Most Variable Genes)",
-     xlab = "Sample",
-     ylab = "log10(Cook's Distance + 1)")
-
-dev.off()
-
 
 # Filter significant DEGs
 sig_res <- subset(res, padj < 0.05 & abs(log2FoldChange) >= 1)
@@ -114,35 +103,6 @@ EnhancedVolcano(res,
                 title = "Volcano Plot: Tumor vs Normal",
                 subtitle = "TCGA-COAD Differential Expression"
 )
-
-#Appendix Table B3. Complete DESeq2 differential expression results for tumor vs normal samples.
-write.csv(as.data.frame(res_merged),
-          "Appendix_Table_B3_DESeq2_All_Genes.csv",
-          row.names = FALSE)
-
-#TableB3 preview
-selected_metadata <- res_merged %>%
-  dplyr::select(
-    ensembl,
-    log2FoldChange,
-    pvalue,
-    padj,
-    SYMBOL,
-  )
-preview_B3 <- head(selected_metadata, 10)
-write.csv(as.data.frame(preview_B3),
-          "Appendix_Table_B3_DESeq2_Preview.csv",
-          row.names = FALSE)
-
-#Appendix Table B4. Full list of significantly differentially expressed genes.
-write.csv(as.data.frame(sig_res),
-          "Appendix_Table_B4_Significant_DEGs.csv",
-          row.names = TRUE)
-#Table b4 preview
-preview_B4 <- head(sig_res, 10)
-write.csv(as.data.frame(preview_B4),
-          "Appendix_Table_B4_Significant_DEGs_Preview.csv",
-          row.names = TRUE)
 
 
 library(pheatmap)
@@ -191,12 +151,6 @@ pheatmap(
   fontsize = 10,
   main = "Top 50 Differentially Expressed Genes (Gene Symbols)"
 )
-
-# Appendix Figure A1 — Dispersion Estimates
-png("Appendix_Figure_A1_DispersionEstimates.png", 
-    width = 1800, height = 1600, res = 220)
-plotDispEsts(dds, main = "Dispersion Estimates (DESeq2)")
-dev.off()
 
 save(dds, vsd, data_filtered, res, sig_res, res_merged, geneTable, file = "TCGA_COAD_data_acquisition_Processed.RData")
 
