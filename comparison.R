@@ -8,6 +8,27 @@ gsea_df$CleanName <- gsub("KEGG_", "", gsea_df$pathway)
 gsea_df$CleanName <- gsub("_", " ", gsea_df$CleanName)
 gsea_df$CleanName <- tolower(gsea_df$CleanName)
 
+
+#overlap coefficient
+significant_ora <- ora_df[ora_df$p.adjust < 0.05, ]
+count_X <- nrow(significant_ora)
+
+significant_gsea <- gsea_df[gsea_df$padj < 0.05, ]
+count_Y <- nrow(significant_gsea)
+
+intersection_pathways <- intersect(significant_ora$CleanName, significant_gsea$CleanName)
+count_intersection <- length(intersection_pathways)
+
+# Calculate the Overlap Coefficient based on your existing significant counts (40 and 83)
+overlap_coefficient <- count_intersection / min(count_X, count_Y)
+
+# Print final results
+print(paste("Shared Pathways (CleanName):", count_intersection))
+print(intersection_pathways)
+print(paste("Overlap Coefficient:", round(overlap_coefficient, 3)))
+
+
+
 # IDENTIFY COMMON PATHWAYS BY NAME
 common_names <- intersect(ora_df$CleanName, gsea_df$CleanName)
 
